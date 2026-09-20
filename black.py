@@ -1,14 +1,16 @@
 import math
 from scipy.stats import norm
+import qfin as qf
+import matplotlib.pyplot as plt
 
 
 def black_scholes(S, K, T, r, vol, q=0):
-    # S = Underlying price
-    # K = Strike price
-    # T = Time to expiration
-    # r = Risk-free rate
-    # vol = Volatility
-    # q = dividend yield (0 = no dividends)
+    # S - current price
+    # K - strike price
+    # T - Time to expiry (years)
+    # r - risk-free rate
+    # vol - volatility
+    # q - dividend yield (0 = no dividends)
 
     d1 = (math.log(S/K) + (r - q + 0.5 * vol**2)*T) / (vol * math.sqrt(T))
 
@@ -16,16 +18,41 @@ def black_scholes(S, K, T, r, vol, q=0):
 
     # Call option price
 
-    C = S * norm.cdf(d1) * math.exp(-q*T) - K * math.exp(-r*T) * norm.cdf(d2)
+    call = S * norm.cdf(d1) * math.exp(-q*T) - K * \
+        math.exp(-r*T) * norm.cdf(d2)
 
     # Put option price
 
-    P = K * math.exp(-r*T) * norm.cdf(-d2) - S * norm.cdf(-d1) * math.exp(-q*T)
+    put = K * math.exp(-r*T) * norm.cdf(-d2) - S * \
+        norm.cdf(-d1) * math.exp(-q*T)
 
-    print(f"The value of d1 is: {round(d1, 4)}")
-    print(f"The value of d2 is: {round(d2, 4)}")
-    print(f"The price of the buy option is: ${round(C, 2)}")
-    print(f"The price of the sell option is: ${round(P, 2)}")
+    return round(call, 2)
 
 
-black_scholes(45, 40, 1, 0.1, 0.2, 0.01)
+def black_scholes_plot(S, K, T, r, vol, option_type="call"):
+
+    premium = black_scholes(45, 40, 1, 0.1, 0.2, 0.01)
+
+    path = qf.simulations.GeometricBrownianMotion(S, r, vol, 1/252, T)
+
+    plt.style.use('dark_background')
+
+    plt.hlines(K, 0, T * 252, label="Strike", color="Blue")
+
+    plt.plot(path.simulated_path, label="Price Path", color="White")
+
+    if path.simulated_path[-1] <= K:
+        plt.vlines(252, path.simulated_path[-1], K, color='red', label="P/L")
+        print(f"Loss of {premium}")
+    else:
+        plt.vlines(
+            252, K, path.simulated_path[-1], color='green', label="P/L")
+        print(f"Win of {path.simulated_path[-1] - K - premium}")
+
+    plt.xlabel('Time')
+    plt.ylabel('Stock Price')
+    plt.legend()
+    plt.show()
+
+
+black_scholes_plot(45, 40, 1, 0.1, 0.2)
