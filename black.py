@@ -4,7 +4,7 @@ import qfin as qf
 import matplotlib.pyplot as plt
 
 
-def black_scholes(S, K, T, r, vol, q=0):
+def black_scholes(S, K, T, r, vol, q=0, option_type="call"):
     # S - current price
     # K - strike price
     # T - Time to expiry (years)
@@ -26,14 +26,22 @@ def black_scholes(S, K, T, r, vol, q=0):
     put = K * math.exp(-r*T) * norm.cdf(-d2) - S * \
         norm.cdf(-d1) * math.exp(-q*T)
 
-    return round(call, 2)
+    if option_type == "call":
+        return round(call, 2)
+    else:
+        return round(put, 2)
 
 
-def black_scholes_plot(S, K, T, r, vol, option_type="call"):
+def black_scholes_plot(S, K, T, r, vol, q, option_type):
 
-    premium = black_scholes(45, 40, 1, 0.1, 0.2, 0.01)
+    premium = black_scholes(S, K, T, r, vol, q, option_type)
 
     path = qf.simulations.GeometricBrownianMotion(S, r, vol, 1/252, T)
+
+    if option_type == "call":
+        pay = max(path.simulated_path[-1] - K, 0)
+    else:
+        pay = max(K - path.simulated_path[-1], 0)
 
     plt.style.use('dark_background')
 
@@ -41,13 +49,15 @@ def black_scholes_plot(S, K, T, r, vol, option_type="call"):
 
     plt.plot(path.simulated_path, label="Price Path", color="White")
 
-    if path.simulated_path[-1] <= K:
+    if pay - premium < 0:
         plt.vlines(252, path.simulated_path[-1], K, color='red', label="P/L")
-        print(f"Loss of {premium}")
+        print(f"Loss of {round(premium - pay, 2)}")
+    elif pay - premium == 0:
+        print(f"Breakeven")
     else:
         plt.vlines(
             252, K, path.simulated_path[-1], color='green', label="P/L")
-        print(f"Win of {path.simulated_path[-1] - K - premium}")
+        print(f"Win of {round(pay - premium, 2)}")
 
     plt.xlabel('Time')
     plt.ylabel('Stock Price')
@@ -55,4 +65,4 @@ def black_scholes_plot(S, K, T, r, vol, option_type="call"):
     plt.show()
 
 
-black_scholes_plot(45, 40, 1, 0.1, 0.2)
+black_scholes_plot(35, 40, 1, 0.1, 0.2, 0.01, "call")
